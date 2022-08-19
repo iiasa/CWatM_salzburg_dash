@@ -4,19 +4,21 @@
 [![license](https://img.shields.io/github/license/iiasa/CWatM_salzburg_dash?color=1)](https://github.com/iiasa/CWatM_salzburg_dash/blob/main/LICENSE)
 [![size](https://img.shields.io/github/repo-size/iiasa/CWatM_salzburg_dash)](https://github.com/iiasa/CWatM_salzburg_dash)
 
+## https://waterstressatpinzgau.herokuapp.com
 
 ## Overview 
 
 Dashboard Salzburg & Salzach show the future hydrology of the Salzach and Saalach rivers.   
+
 It is using the climate proejections from ZAMG (OEKS15) to project the hydrological regime for every 1x1 km2 cell in the study area
 
 The hydrology is calculated with the oper-source hydrological model CWatM  https://cwatm.iiasa.ac.at/
 
-
-
 ## Project
 
-The dashboard is related to the project **Climate change induced waterstress: challenges and opportunities in Austrian regions (WaterStressAT)**
+The dashboard is related to the project
+
+**Climate change induced waterstress: challenges and opportunities in Austrian regions (WaterStressAT)**
 
 https://iiasa.ac.at/projects/WaterStressAT
 
@@ -120,9 +122,8 @@ Update git and deploy
 - git commit -m "a description of the changes"
 - git push heroku master
 
-https://waterstressatpinzgau.herokuapp.com/
+https://waterstressatpinzgau.herokuapp.com
 
-# ----------------------------------------------
 
 
 
