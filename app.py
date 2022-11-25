@@ -32,15 +32,12 @@ import time
 # Initialize app
 
 #external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-#app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-#app = dash.Dash(__name__,)
 app = dash.Dash(__name__,external_stylesheets=[dbc.themes.SPACELAB])
 
 server = app.server
 mapbox_access_token = 'pk.eyJ1IjoiYnVwZSIsImEiOiJjanc3ZnpmMDEwYm1vNDNsbW15bXh3Y2RlIn0.DFOGHx9u2JThJKBQo1zDMQ'
 mapbox_style = "mapbox://styles/bupe/cjw7g6cax0hem1cqy9vc9vln4"
 colorapp = {"background": "#ffffff", "text": "#082255", "text2": "#082255"}
-
 
 # Jahresgang
 def minmax(v1,v2,v3,v4):
@@ -57,28 +54,7 @@ def geo_id(dd, dd_array):
    geo_idx = (np.abs(dd_array - dd)).argmin()
    return geo_idx
 
-
 def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
-
-    """
-    text1 = "**Info  GCM: " + GCMS[trigger3] + "**"
-    text1 += "Standort: Lat: " + str(xydata[trigger1][6]) + " Lon: " + str(xydata[trigger1][7]) + " Höhe: " + str(
-        xydata[trigger1][5])
-    text1 += str(xydata[trigger1][9]) + " / " + str(xydata[trigger1][10])
-    text1=  html.Div([
-        html.P("<b>Info</b>"),
-        html.P("<b>GCM: "+ GCMS[trigger[3]]+ "</b>"),
-        html.P("Standort: Lat: " + str(xydata[trigger1][6]) + " Lon: " + str(xydata[trigger1][7]) + " Höhe: " + str(xydata[trigger1][5]))
-    ])
-
-    textA1 = "Standort: Lat: " + str(xydata[trigger1][6]) + " Lon: " + str(xydata[trigger1][7])
-
-    # https://dash.plotly.com/dash-html-components
-    text1 = html.Div([
-        html.P('Dash &emsp; converts &nbsp; &nbsp; &nbsp; Python</b> m³s classes <br>into HTML'),
-        html.P(textA1)
-    ], style={'marginTop': 25, 'color': 'black', 'fontSize': 14})
-    """
 
     text1 = dbc.Container(
         [
@@ -88,35 +64,42 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
             dcc.Markdown(str(xydata[trigger1][9]) + " / " + str(xydata[trigger1][10])),
             #dcc.Markdown(str(x1) + " " + str(y1)),
 
-        ]
+        ],
+        style={'fontSize': 15, 'textAlign': 'left'}
     )
+
     if trigger2 < 2050:
-        text2 = dbc.Container(
-            [
-                dcc.Markdown(". "),
-                dcc.Markdown("**GCM: " + GCMS[trigger3] + "**"),
-                dcc.Markdown("**1990-2020**"),
-                dcc.Markdown("Durchschnitt:\t{:5.2f} m³s".format(para[0])),
-                dcc.Markdown("MNQ:\t\t{:5.2f} m³s".format(para[2])),
-                dcc.Markdown("Dauerlinie 5%: {:5.2f} m³s".format(para[4])),
-                #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
-                #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
-            ]
-        )
+        row3 = html.Tr([html.Td("Durchschnitt [m³/s]:"), html.Td("{:>5.2f}".format(para[0])), html.Td("")])
+        row4 = html.Tr([html.Td("Dauerlinie 5% [m³/s]:"), html.Td("{:.2f}".format(para[4])),html.Td("")])
+        row5 = html.Tr([html.Td("MNQ 5% [m³/s]:"), html.Td("{:.2f}".format(para[2])), html.Td("")])
+
+
     else:
-        text2 = dbc.Container(
-            [
-                dcc.Markdown(". "),
-                dcc.Markdown("**GCM: " + GCMS[trigger3] + "**"),
-                dcc.Markdown("**Vergleich: 1990-2020 zu: " + str(trigger2 - 30) + "-" + str(trigger2) + "**"),
-                dcc.Markdown("Durchschnitt:\t{:5.2f} m³s zu: {:5.2f} m³/s".format(para[0], para[1])),
-                dcc.Markdown("MNQ:\t\t{:5.2f} m³s zu: {:5.2f} m³s".format(para[2], para[3])),
-                dcc.Markdown("Dauerlinie 5%: {:5.2f} m³s zu:    {:5.2f} m³s".format(para[4], para[5])),
-                #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
-                #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
-            ]
-        )
-    return text1,text2
+        row3 = html.Tr([html.Td("Durchschnitt [m³/s]:"), html.Td("{:.2f}".format(para[0])),html.Td("{:.2f}".format(para[1]))])
+        row4 = html.Tr([html.Td("Dauerlinie 5% [m³/s]:"), html.Td("{:.2f}".format(para[4])), html.Td("{:.2f}".format(para[5]))])
+        row5 = html.Tr([html.Td("MNQ [m³/s]:"), html.Td("{:5.2f}".format(para[2])),html.Td("{:.2f}".format(para[3]))])
+
+    row1 = html.Tr([html.Td("GCM: " + GCMS[trigger3]), html.Td("1990-2020"), html.Td("2020-2050")])
+    row2 = html.Tr([html.Td(""),html.Td(""),html.Td("")])
+    table_body = [html.Tbody([row1, row2, row3,row4,row5])]
+    table = dbc.Table(
+        table_body,
+        bordered= False,
+        #borderless = false,
+        #dark = False,
+        #hover = False,
+        striped = True,
+        size = 'sm',
+        id="table-color",
+        color="light",
+        style={'fontSize': 15, 'textAlign': 'left'}
+
+    )
+
+    #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
+    #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
+
+    return text1,table
 #------------------------------------------------------
 
 def updatefig(fig,figdat, figindex, mini, maxi, title):
@@ -434,7 +417,7 @@ logo = dbc.Navbar(
 
 jumbotron = dbc.Container(
     [
-        html.H6("Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich (WaterStressAT)"),
+        html.H6("Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich ([WasserstressAT](https://iiasa.ac.at/projects/WaterStressAT))"),
         dcc.Markdown('''
                     Österreich is ein wasserreiches Land in dem nur 3% des verfügbaren Wassers genutzt wird
                                         
@@ -442,7 +425,7 @@ jumbotron = dbc.Container(
                     
                     aufgrund höherer Temperaturen, verminderter Abflüsse und erhöhtem Verbrauch, erhöhen. 
                     
-                    [WasserstressAT](https://iiasa.ac.at/projects/WaterStressAT) ist ein Projekt von: IIASA, Umweltbundesamt, ZAMG, Uni Graz.
+                    WasserstressAT ist ein Projekt von: IIASA, Umweltbundesamt, ZAMG, Uni Graz.
                     
                     Hydrologische Berechnungen basieren auf dem Model [**CWatM**](https://cwatm.iiasa.ac.at/)
                  '''),
@@ -451,7 +434,8 @@ jumbotron = dbc.Container(
         dcc.Markdown('''
                     Dieses Werkzeug wird zwar mit der Unterstützung des Landes Salzburg entwickelt,                   
                     
-                    es handelt sich um einen ersten Entwurf des Projektes 
+                    es handelt sich um einen ersten Entwurf des Projektes
+                     
                     und ist in keinem Fall ein offizielles Produkt einer österreichischen Behörde.
                 '''),
         html.Hr(),
@@ -584,7 +568,10 @@ app.layout = dbc.Container([
         dbc.Row(
             [
                 dbc.Col(html.Div(id='my-output1')),
+                #dbc.Col(html.Div(id='x1')),
                 dbc.Col(html.Div(id='my-output2')),
+                #dbc.Col(html.Div(id='x2'))
+
             ],
         ),
 
