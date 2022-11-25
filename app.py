@@ -90,24 +90,32 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
 
         ]
     )
-
-
-
-
-    text2 = dbc.Container(
-        [
-            dcc.Markdown(". "),
-            dcc.Markdown("**GCM: " + GCMS[trigger3] + "**"),
-            dcc.Markdown("**Vergleich: 1990-2020 zu: " + str(trigger2 - 30) + "-" + str(trigger2) + "**"),
-            dcc.Markdown("Durchschnitt:\t{:5.2f} m³s zu: {:5.2f} m³/s".format(para[0], para[0])),
-            dcc.Markdown("MNQ:\t\t{:5.2f} m³s zu: {:5.2f} m³s".format(para[2], para[3])),
-            dcc.Markdown("Dauerlinie 5%:{:5.2f} m³s zu:    {:5.2f} m³s".format(para[4], para[5])),
-            dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
-            dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
-        ]
-    )
-
-
+    if trigger2 < 2050:
+        text2 = dbc.Container(
+            [
+                dcc.Markdown(". "),
+                dcc.Markdown("**GCM: " + GCMS[trigger3] + "**"),
+                dcc.Markdown("**1990-2020**"),
+                dcc.Markdown("Durchschnitt:\t{:5.2f} m³s".format(para[0])),
+                dcc.Markdown("MNQ:\t\t{:5.2f} m³s".format(para[2])),
+                dcc.Markdown("Dauerlinie 5%: {:5.2f} m³s".format(para[4])),
+                #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
+                #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
+            ]
+        )
+    else:
+        text2 = dbc.Container(
+            [
+                dcc.Markdown(". "),
+                dcc.Markdown("**GCM: " + GCMS[trigger3] + "**"),
+                dcc.Markdown("**Vergleich: 1990-2020 zu: " + str(trigger2 - 30) + "-" + str(trigger2) + "**"),
+                dcc.Markdown("Durchschnitt:\t{:5.2f} m³s zu: {:5.2f} m³/s".format(para[0], para[1])),
+                dcc.Markdown("MNQ:\t\t{:5.2f} m³s zu: {:5.2f} m³s".format(para[2], para[3])),
+                dcc.Markdown("Dauerlinie 5%: {:5.2f} m³s zu:    {:5.2f} m³s".format(para[4], para[5])),
+                #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
+                #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
+            ]
+        )
     return text1,text2
 #------------------------------------------------------
 
@@ -195,8 +203,8 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
         data2d = go.Scatter(y=ts11.values, x=ts11.index, mode='lines', name='--', visible=False,
                             fill='tonexty', fillcolor="rgba(255,31,0,0.2)", line=dict(width=0))
         layout2 = dict(xaxis_title='Tage', yaxis_title='Abfluss [m<sup>3</sup>/s]')
-        data2 = go.Figure(data=[data2a, data2b, data2c, data2d], layout=layout2)
-        fig = go.Figure(data=[data2a, data2b, data2c, data2d], layout=layout2)
+        data2 = go.Figure(data=[data2c, data2d, data2a, data2b], layout=layout2)
+        fig = go.Figure(data=[data2c, data2d, data2a, data2b], layout=layout2)
 
     if figindex == 1:
 
@@ -223,8 +231,8 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
                             visible=True, fill='tonexty', fillcolor="rgba(255,31,0,0.2)")
 
         layout3 = dict(xaxis_title='Tage', yaxis_title='Abfluss [m<sup>3</sup>/s]',xaxis_tickformat = '%e. %b')
-        data3 = go.Figure(data=[data3a, data3b, data3c, data3d], layout=layout3)
-        fig = go.Figure(data=[data3a, data3b, data3c, data3d], layout=layout3)
+        data3 = go.Figure(data=[data3c, data3d, data3a, data3b], layout=layout3)
+        fig = go.Figure(data=[data3c, data3d, data3a, data3b], layout=layout3)
 
     if figindex == 2:
         xx = np.arange(1, 366, 2)
@@ -237,26 +245,27 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
             y3 = dauavg2
             y4 = daumin2
 
-
         data5a = go.Scatter(y=y1[::-1], x=xx, mode='lines', name=GCMS[GCMindex] + ' AVG 1990-2020', visible=True,
                             line=dict(color='blue', width=2))
         data5b = go.Scatter(y=y2[::-1], x=xx, mode='lines', name=GCMS[GCMindex] + ' MIN 1990-2020', visible=True,
                             line=dict(color='blue', width=1),
                             fill='tonexty', fillcolor="rgba(31,120,180,0.2)")
+
         data5c = go.Scatter(y=y3[::-1], x=xx, mode='lines', name=GCMS[GCMindex] + " AVG" + peri, visible=True,
                             line=dict(color='red', width=2))
         data5d = go.Scatter(y=y4[::-1], x=xx, mode='lines', name=GCMS[GCMindex] + " MIN" + peri, visible=True,
                             line=dict(color='red', width=1),
                             fill='tonexty', fillcolor="rgba(255,31,0,0.2)")
+
         layout5 = dict(xaxis_title='Überschreitungstage Tage', yaxis_title='Abfluss [m<sup>3</sup>/s]')
-        data5 = go.Figure(data=[data5a, data5b, data5c, data5d], layout=layout5)
-        fig = go.Figure(data=[data5a, data5b, data5c, data5d], layout=layout5)
+        data5 = go.Figure(data=[data5c, data5d, data5a, data5b], layout=layout5)
+        fig = go.Figure(data=[data5c, data5d, data5a, data5b], layout=layout5)
 
 
     #fig = go.Figure(data=[data2a, data2b, data2c, data2d], layout=layout2)
 
     text1 =  "Lat: "+ str(xydata[index][6]) + " Lon: " + str(xydata[index][7])
-    text1 += " Zeitraum: 1990-2010 zu " + peri
+    text1 += " Zeitraum: 1990-2020 zu " + peri
     if figindex == 0:
         title = "<b>Zeitreihe: </b>"+ text1
         #title =str(mini1)+ " " + str(maxi1)
@@ -425,26 +434,29 @@ logo = dbc.Navbar(
 
 jumbotron = dbc.Container(
     [
-        html.H6("Climate change induced waterstress: challenges and opportunities in Austrian regions (WaterStressAT)"),
+        html.H6("Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich (WaterStressAT)"),
         dcc.Markdown('''
-                    Austria is a water-rich country, with only 3% of overall available water being used. The Austrian Panel on Climate Change
-                     
-                    reports that across the country and on average climate change will not affect water availability significantly. 
+                    Österreich is ein wasserreiches Land in dem nur 3% des verfügbaren Wassers genutzt wird
+                                        
+                    Jedoch, zeitlich und lokal wird der Klimawandel den Druck auf die Resource Frischwasser,                     
                     
-                    However, locally and regionally, climate change will likely increase pressure on freshwater resources due to 
+                    aufgrund höherer Temperaturen, verminderter Abflüsse und erhöhtem Verbrauch, erhöhen. 
                     
-                    decreasing runoff, increasing temperatures
+                    [WasserstressAT](https://iiasa.ac.at/projects/WaterStressAT) ist ein Projekt von: IIASA, Umweltbundesamt, ZAMG, Uni Graz.
                     
-                    
-                    Water balance analysis based on the calculation of hydrological model **CWatM**
-                    [https://cwatm.iiasa.ac.at](https://cwatm.iiasa.ac.at/)
-
-                '''),
+                    Hydrologische Berechnungen basieren auf dem Model [**CWatM**](https://cwatm.iiasa.ac.at/)
+                 '''),
 
         html.Hr(),
         dcc.Markdown('''
-            by [IIASA BNL/WAT Security](https://iiasa.ac.at/programs/biodiversity-and-natural-resources-bnr/water-security/)''')
-
+                    Dieses Werkzeug wird zwar mit der Unterstützung des Landes Salzburg entwickelt,                   
+                    
+                    es handelt sich um einen ersten Entwurf des Projektes 
+                    und ist in keinem Fall ein offizielles Produkt einer österreichischen Behörde.
+                '''),
+        html.Hr(),
+        dcc.Markdown('''
+            von [IIASA BNL/WAT Security](https://iiasa.ac.at/programs/biodiversity-and-natural-resources-bnr/water-security/)''')
     ],
     # color="primary"
 )
