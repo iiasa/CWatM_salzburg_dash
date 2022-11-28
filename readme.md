@@ -12,7 +12,7 @@ Dashboard Salzburg & Salzach show the future hydrology of the Salzach and Saalac
 
 This tool is under discussion with the authorities of the Land Salzburg, but is in no means official
 
-or has any connections with the land Salzburg. It is a draft tooll of the project Waterstress AT
+"or has any connections with the land Salzburg. It is a draft tooll of the project Waterstress AT
 
 
 It is using the climate proejections from ZAMG (OEKS15) to project the hydrological regime for every 1x1 km2 cell in the study area

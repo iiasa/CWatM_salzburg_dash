@@ -2,8 +2,8 @@
 # PB 04/08/22
 
 import dash
-from dash import dcc
-from dash import html
+
+from dash import dcc,html, dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
@@ -14,7 +14,7 @@ import json
 import pandas as pd
 import netCDF4
 import xarray as xr
-
+from collections import OrderedDict
 
 import datetime
 import time
@@ -33,11 +33,23 @@ import time
 
 #external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__,external_stylesheets=[dbc.themes.SPACELAB])
-
 server = app.server
 mapbox_access_token = 'pk.eyJ1IjoiYnVwZSIsImEiOiJjanc3ZnpmMDEwYm1vNDNsbW15bXh3Y2RlIn0.DFOGHx9u2JThJKBQo1zDMQ'
 mapbox_style = "mapbox://styles/bupe/cjw7g6cax0hem1cqy9vc9vln4"
 colorapp = {"background": "#ffffff", "text": "#082255", "text2": "#082255"}
+
+
+
+table1 = OrderedDict(
+    [
+        ("GCM", ["MQ [m³/s]:", "Dauerlinie 5% [m³/s]:", "MNQ [m³/s]:"]),
+        ("1990-2020", [0, 0, 0]),
+        ("2020-2050", ["", "", ""]),
+    ]
+)
+table1 = pd.DataFrame(table1)
+
+
 
 # Jahresgang
 def minmax(v1,v2,v3,v4):
@@ -63,39 +75,74 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
             dcc.Markdown("Höhe:    " + str(xydata[trigger1][5])+" m"),
             dcc.Markdown(str(xydata[trigger1][9]) + " / " + str(xydata[trigger1][10])),
             #dcc.Markdown(str(x1) + " " + str(y1)),
-
         ],
         style={'fontSize': 15, 'textAlign': 'left'}
     )
 
+    col1 = "GCM: " + GCMS[trigger3]
+    col2 = '1990-2020'
+    col3 = '2020-2050'
+    table1.columns = [col1, col2, col3]
+    table1.loc[0, col2] = "{:.2f}".format(para[0])
+    table1.loc[1, col2] = "{:.2f}".format(para[4])
+    table1.loc[2, col2] = "{:.2f}".format(para[2])
+
     if trigger2 < 2050:
-        row3 = html.Tr([html.Td("Durchschnitt [m³/s]:"), html.Td("{:>5.2f}".format(para[0])), html.Td("")])
-        row4 = html.Tr([html.Td("Dauerlinie 5% [m³/s]:"), html.Td("{:.2f}".format(para[4])),html.Td("")])
-        row5 = html.Tr([html.Td("MNQ 5% [m³/s]:"), html.Td("{:.2f}".format(para[2])), html.Td("")])
-
-
+        table1.loc[0, col3] = ""
+        table1.loc[1, col3] = ""
+        table1.loc[2, col3] = ""
     else:
-        row3 = html.Tr([html.Td("Durchschnitt [m³/s]:"), html.Td("{:.2f}".format(para[0])),html.Td("{:.2f}".format(para[1]))])
-        row4 = html.Tr([html.Td("Dauerlinie 5% [m³/s]:"), html.Td("{:.2f}".format(para[4])), html.Td("{:.2f}".format(para[5]))])
-        row5 = html.Tr([html.Td("MNQ [m³/s]:"), html.Td("{:5.2f}".format(para[2])),html.Td("{:.2f}".format(para[3]))])
+        table1.loc[0, col3] = "{:.2f}".format(para[1])
+        table1.loc[1, col3] = "{:.2f}".format(para[5])
+        table1.loc[2, col3] = "{:.2f}".format(para[3])
 
-    row1 = html.Tr([html.Td("GCM: " + GCMS[trigger3]), html.Td("1990-2020"), html.Td("2020-2050")])
-    row2 = html.Tr([html.Td(""),html.Td(""),html.Td("")])
-    table_body = [html.Tbody([row1, row2, row3,row4,row5])]
-    table = dbc.Table(
-        table_body,
-        bordered= False,
-        #borderless = false,
-        #dark = False,
-        #hover = False,
-        striped = True,
-        size = 'sm',
-        id="table-color",
-        color="light",
-        style={'fontSize': 15, 'textAlign': 'left'}
+    table = dash_table.DataTable(
+        data=table1.to_dict('records'),
+        columns=[{'id': c, 'name': c} for c in table1.columns],
+        page_size=3,
+        style_cell = {'fontSize': 15},
 
+        style_cell_conditional=[
+            {'if': {'column_id': col1},
+             'textAlign': 'left'},
+        ],
+        tooltip_conditional=[
+            {
+                'if': {
+                    'column_id': col1,
+                    'row_index': 0
+                },
+                'type': 'markdown',
+                'value': 'MQ: Durchschnitt der Zeitreihe für den angegebenen Zeitraum.'
+            },
+            {
+                'if': {
+                    'column_id': col1,
+                    'row_index': 1
+                },
+                'type': 'markdown',
+                'value': 'Dauerlinie 5%: Dauerlinie als Mittel aller Jahresdauerlinien. 5% = 18 Tage, an denen der Abfluss unterschritten wird.',
+            },
+            {
+                'if': {
+                    'column_id': col1,
+                    'row_index': 2
+                },
+                'type': 'markdown',
+                'value': 'MNQ: Mittlerer Niedrigwasserabfluss = Niedrigster Abfluss jeden Jahres, gemittelt über alle Jahre.'
+            }
+        ],
+        css=[{
+            'selector': '.dash-table-tooltip',
+            'rule':  'font-size: 12px; background-color: grey; color: white; line-height: 12px'
+        }],
+        style_as_list_view=True,
+        tooltip_delay=1,
+        tooltip_duration=None,
     )
 
+
+    #'fontSize': 12, 'font-family':'sans-serif', 'line-height': 15
     #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
     #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
 
@@ -248,7 +295,10 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
     #fig = go.Figure(data=[data2a, data2b, data2c, data2d], layout=layout2)
 
     text1 =  "Lat: "+ str(xydata[index][6]) + " Lon: " + str(xydata[index][7])
-    text1 += " Zeitraum: 1990-2020 zu " + peri
+    if slider == 2020:
+        text1 += " Zeitraum: 1990-2020"
+    else:
+        text1 += " Zeitraum: 1990-2020 zu " + peri
     if figindex == 0:
         title = "<b>Zeitreihe: </b>"+ text1
         #title =str(mini1)+ " " + str(maxi1)
@@ -417,32 +467,29 @@ logo = dbc.Navbar(
 
 jumbotron = dbc.Container(
     [
-        html.H6("Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich ([WasserstressAT](https://iiasa.ac.at/projects/WaterStressAT))"),
         dcc.Markdown('''
-                    Österreich is ein wasserreiches Land in dem nur 3% des verfügbaren Wassers genutzt wird
-                                        
-                    Jedoch, zeitlich und lokal wird der Klimawandel den Druck auf die Resource Frischwasser,                     
+                    ##### Info
                     
+                    **Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich - WasserstressAT**
+                    
+                    Österreich is ein wasserreiches Land in dem nur 3% des verfügbaren Wassers genutzt wird.
+                    Jedoch, zeitlich und lokal wird der Klimawandel den Druck auf die Resource Frischwasser,
                     aufgrund höherer Temperaturen, verminderter Abflüsse und erhöhtem Verbrauch, erhöhen. 
                     
-                    WasserstressAT ist ein Projekt von: IIASA, Umweltbundesamt, ZAMG, Uni Graz.
+                    * [WasserstressAT](https://iiasa.ac.at/projects/WaterStressAT) ist ein Projekt von: IIASA, Umweltbundesamt, ZAMG, Uni Graz.
                     
-                    Hydrologische Berechnungen basieren auf dem Model [**CWatM**](https://cwatm.iiasa.ac.at/)
-                 '''),
+                    * Hydrologische Berechnungen basieren auf dem Model [**CWatM**](https://cwatm.iiasa.ac.at/)
 
-        html.Hr(),
-        dcc.Markdown('''
-                    Dieses Werkzeug wird zwar mit der Unterstützung des Landes Salzburg entwickelt,                   
-                    
-                    es handelt sich um einen ersten Entwurf des Projektes
-                     
+                    * Dieses Werkzeug wird zwar mit der Unterstützung des Landes Salzburg entwickelt, es handelt sich um einen ersten Entwurf des Projektes 
                     und ist in keinem Fall ein offizielles Produkt einer österreichischen Behörde.
                 '''),
         html.Hr(),
         dcc.Markdown('''
             von [IIASA BNL/WAT Security](https://iiasa.ac.at/programs/biodiversity-and-natural-resources-bnr/water-security/)''')
     ],
-    # color="primary"
+    style={'fontSize': 12, 'font-family':'sans-serif', 'line-height': 15}
+    #"overflow-x": "scroll" "white-space": "pre"
+    #html.H6("Wasserstress durch Klimawandel: Herausforderung und Möglichkeiten in Österreich WasserstressAT"),
 )
 
 
@@ -465,6 +512,49 @@ drop1_dbc = dbc.Form([
                 ),
 ])
 
+"""
+app.layout = html.Div(
+    className="container",
+    children=[
+        dcc.Graph(
+            id="graph-4",
+            figure=fig,
+            clear_on_unhover=True),
+        dcc.Tooltip(
+            id="graph-tooltip-4",
+            loading_text="LOADING",
+            direction="bottom"),
+    ],
+)
+"""
+
+drop2_dbc = dbc.Form(
+    className="drop_box1",
+    children=[
+        html.P(
+            id="drop2-text",
+            children="",
+        ),
+        dcc.Dropdown(
+            id="drop2",
+            options=[
+                {"label": "Diagramm: Zeitreihe", "value": "Zeitreihe"},
+                {"label": "Diagramm: Jahresgang", "value": "Jahresgang"},
+                {"label": "Diagramm: Dauerlinie", "value": "Dauerlinie"},
+            ],
+            value='Zeitreihe',
+            searchable=False,
+            clearable=False
+        ),
+        dcc.Tooltip(
+            id="drop2-tooltip",
+            loading_text="blabla",
+            direction="bottom"
+        ),
+    ],
+)
+
+"""
 
 drop2_dbc = dbc.Form([
                 html.P(
@@ -483,7 +573,7 @@ drop2_dbc = dbc.Form([
                     clearable=False
                 ),
 ])
-
+"""
 slider_dbc = dbc.Form([
                 html.P(
                     id="slider-text",
@@ -496,13 +586,15 @@ slider_dbc = dbc.Form([
                     max=2050,
                     step = 30,
                     value=2020,
+
                     marks={
                         str(2020+year): {
                             "label": str(2020+year),
                             "style": {"color": "#082255"},
                         }
                         for year in  range(0, 31, 30)
-                     },
+                    },
+                    tooltip={"placement": "bottom", "always_visible": True}
                 ),
 ])
 
@@ -568,16 +660,25 @@ app.layout = dbc.Container([
         dbc.Row(
             [
                 dbc.Col(html.Div(id='my-output1')),
-                #dbc.Col(html.Div(id='x1')),
+                dbc.Col(html.Div(id='x1')),
                 dbc.Col(html.Div(id='my-output2')),
-                #dbc.Col(html.Div(id='x2'))
+                dbc.Col(html.Div(id='x2'))
 
             ],
         ),
 
 
         html.H1(""),
-        html.Div([jumbotron],className="h-100 p-5 bg-light border rounded-3"),
+
+    dbc.Row(
+        [
+            dbc.Col(html.Div([jumbotron], className="info")),
+            dbc.Col(html.Div(id='info2')),
+        ],
+    ),
+
+
+
 
 
 ],
@@ -685,6 +786,10 @@ def display_map(year, figure):
                    dragmode=False,
                    )
     return fig
+
+#----------------------------------
+
+
 
 # ---------------------------------------------------
 
