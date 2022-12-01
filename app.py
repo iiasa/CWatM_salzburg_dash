@@ -676,7 +676,7 @@ app.layout = dbc.Container([
                 dbc.Col(html.Div(id='x1')),
                 dbc.Col(html.Div(id='my-output2')),
                 #dbc.Col(html.Div(id='x2'))
-                dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
+                #dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
 
             ],
         ),
@@ -812,6 +812,7 @@ def func(n_clicks):
         "./assets/waterstressat_pinzgau2.pdf"
     )
 # ------------------------------------
+"""
 @app.callback(
     Output("download-data", "data"),
     Input("btn_data", "n_clicks"),
@@ -835,9 +836,17 @@ def func(n_clicks,input_value,d1value):
         latlon = "_lat" + str(xydata[index][6]) + "_lon" + str(xydata[index][7])
         GCMindex = GCMS.index(d1value)
         name = "waterstressAT_data_" + GCMS[GCMindex] + latlon + "_" + str(downloadclick[0]) + str(n_clicks)+ ".csv"
-        dftest = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 1, 5, 6], "c": ["x", "x", "y", "y"]})
-        return dcc.send_data_frame(dftest.to_csv, name)
 
+
+        dftest = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 1, 5, 6], "c": ["x", "x", "y", "y"]})
+
+        
+        #discharge[0] = file["dis_month"][:, :, :]
+        
+        #return dcc.send_data_frame(dftest.to_csv, name)
+        text = "blbalabla\n1,2,3,4\n5,6,7,8\n"
+        return dict(content= text, filename=name)
+"""
 # ---------------------------------------------------
 
 if __name__ == "__main__":
