@@ -42,9 +42,9 @@ colorapp = {"background": "#ffffff", "text": "#082255", "text2": "#082255"}
 
 table1 = OrderedDict(
     [
-        ("GCM", ["MQ [m³/s]:", "Dauerlinie 5% [m³/s]:", "MNQ [m³/s]:"]),
-        ("1990-2020", [0, 0, 0]),
-        ("2020-2050", ["", "", ""]),
+        ("GCM", ["MQ [m³/s]:","q [l/s km²]:", "Dauerlinie 5% [m³/s]:", "MNQ [m³/s]:"]),
+        ("1990-2020", [0, 0,0, 0]),
+        ("2020-2050", ["", "","", ""]),
     ]
 )
 table1 = pd.DataFrame(table1)
@@ -71,35 +71,40 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
     text1 = dbc.Container(
         [
             dcc.Markdown(". "),
-            dcc.Markdown("Standort:    Lat: " + str(xydata[trigger1][6]) + " Lon: " + str(xydata[trigger1][7])),
+            dcc.Markdown("Standort:    Lat: " + str(xydata[trigger1][7]) + " Lon: " + str(xydata[trigger1][8])),
+            dcc.Markdown("Einzugsgebietsfläche: " + str(xydata[trigger1][6]) + " km²"),
             dcc.Markdown("Höhe:    " + str(xydata[trigger1][5])+" m"),
-            dcc.Markdown(str(xydata[trigger1][9]) + " / " + str(xydata[trigger1][10])),
+            dcc.Markdown(str(xydata[trigger1][10]) + " / " + str(xydata[trigger1][11])),
             #dcc.Markdown(str(x1) + " " + str(y1)),
         ],
         style={'fontSize': 15, 'textAlign': 'left'}
     )
 
+    ups = 1000 / xydata[trigger1][6]
     col1 = "GCM: " + GCMS[trigger3]
     col2 = '1990-2020'
     col3 = '2020-2050'
     table1.columns = [col1, col2, col3]
     table1.loc[0, col2] = "{:.2f}".format(para[0])
-    table1.loc[1, col2] = "{:.2f}".format(para[4])
-    table1.loc[2, col2] = "{:.2f}".format(para[2])
+    table1.loc[1, col2] = "{:.2f}".format(para[1]*ups)
+    table1.loc[2, col2] = "{:.2f}".format(para[4])
+    table1.loc[3, col2] = "{:.2f}".format(para[2])
 
     if trigger2 < 2050:
         table1.loc[0, col3] = ""
         table1.loc[1, col3] = ""
         table1.loc[2, col3] = ""
+        table1.loc[2, col3] = ""
     else:
         table1.loc[0, col3] = "{:.2f}".format(para[1])
-        table1.loc[1, col3] = "{:.2f}".format(para[5])
-        table1.loc[2, col3] = "{:.2f}".format(para[3])
+        table1.loc[1, col3] = "{:.2f}".format(para[1]*ups)
+        table1.loc[2, col3] = "{:.2f}".format(para[5])
+        table1.loc[3, col3] = "{:.2f}".format(para[3])
 
     table = dash_table.DataTable(
         data=table1.to_dict('records'),
         columns=[{'id': c, 'name': c} for c in table1.columns],
-        page_size=3,
+        page_size=4,
         style_cell = {'fontSize': 15},
 
         style_cell_conditional=[
@@ -121,12 +126,20 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
                     'row_index': 1
                 },
                 'type': 'markdown',
-                'value': 'Dauerlinie 5%: Dauerlinie als Mittel aller Jahresdauerlinien. 5% = 18 Tage, an denen der Abfluss unterschritten wird.',
+                'value': 'Abflussspende: Abflussspende als MQ / Einzugsgebietsgröße in [l / (s km2)]. Einzugsbietsgröße aus Modellkennwerten',
             },
             {
                 'if': {
                     'column_id': col1,
                     'row_index': 2
+                },
+                'type': 'markdown',
+                'value': 'Dauerlinie 5%: Dauerlinie als Mittel aller Jahresdauerlinien. 5% = 18 Tage, an denen der Abfluss unterschritten wird.',
+            },
+            {
+                'if': {
+                    'column_id': col1,
+                    'row_index': 3
                 },
                 'type': 'markdown',
                 'value': 'MNQ: Mittlerer Niedrigwasserabfluss = Niedrigster Abfluss jeden Jahres, gemittelt über alle Jahre.'
@@ -294,7 +307,7 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
 
     #fig = go.Figure(data=[data2a, data2b, data2c, data2d], layout=layout2)
 
-    text1 =  "Lat: "+ str(xydata[index][6]) + " Lon: " + str(xydata[index][7])
+    text1 =  "Lat: "+ str(xydata[index][7]) + " Lon: " + str(xydata[index][8])
     if slider == 2020:
         text1 += " Zeitraum: 1990-2020"
     else:
@@ -352,11 +365,12 @@ with open(xyfile) as f:
     xyshape = json.load(f)
 # xydata = np.loadtxt(xytestfile, delimiter = ",",skiprows=1)
 xydata = np.array(pd.read_csv(xytestfile, sep=',',encoding='latin1'))
-xydata[:, 0:7] = xydata[:, 0:7].astype(float)
+xydata[:, 0:8] = xydata[:, 0:8].astype(float)
 xyindex = xydata[:, 0].astype(int)
 q = xydata[:, 4]
-hovertext = '<b>mittlerer Durchfluss Q</b><br>ØQ: %{customdata[4]:.2f} m<sup>3</sup>/s<br>Lat: %{customdata[6]:.2f} Lon: %{customdata[7]:.2f} Höhe: %{customdata[5]:.0f}'
-hovertext += '<extra>PG: %{customdata[9]}<br>PB: %{customdata[10]}</extra>'
+ups = xydata[:, 6]
+hovertext = '<b>mittlerer Durchfluss Q</b><br>ØQ: %{customdata[4]:.2f} m<sup>3</sup>/s<br>Einzg. Fläche: %{customdata[6]:.0f} km<sup>2</sup><br>Lat: %{customdata[7]:.2f} Lon: %{customdata[8]:.2f} Höhe: %{customdata[5]:.0f}'
+hovertext += '<extra>PG: %{customdata[10]}<br>PB: %{customdata[11]}</extra>'
 
 #--------------------------------------------------------
 color1=[[0.0, "rgba(255,255,255,0.1)"],
@@ -833,7 +847,7 @@ def func(n_clicks,input_value,d1value):
             index = 2006
         else:
             index = input_value['points'][0]['pointIndex']
-        latlon = "_lat" + str(xydata[index][6]) + "_lon" + str(xydata[index][7])
+        latlon = "_lat" + str(xydata[index][7]) + "_lon" + str(xydata[index][8])
         GCMindex = GCMS.index(d1value)
         name = "waterstressAT_data_" + GCMS[GCMindex] + latlon + "_" + str(downloadclick[0]) + str(n_clicks)+ ".csv"
 
