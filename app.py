@@ -38,8 +38,6 @@ mapbox_access_token = 'pk.eyJ1IjoiYnVwZSIsImEiOiJjanc3ZnpmMDEwYm1vNDNsbW15bXh3Y2
 mapbox_style = "mapbox://styles/bupe/cjw7g6cax0hem1cqy9vc9vln4"
 colorapp = {"background": "#ffffff", "text": "#082255", "text2": "#082255"}
 
-
-
 table1 = OrderedDict(
     [
         ("GCM", ["MQ [m³/s]:","q [l/s km²]:", "Dauerlinie 5% [m³/s]:", "MNQ [m³/s]:"]),
@@ -86,7 +84,7 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
     col3 = '2020-2050'
     table1.columns = [col1, col2, col3]
     table1.loc[0, col2] = "{:.2f}".format(para[0])
-    table1.loc[1, col2] = "{:.2f}".format(para[1]*ups)
+    table1.loc[1, col2] = "{:.2f}".format(para[0]*ups)
     table1.loc[2, col2] = "{:.2f}".format(para[4])
     table1.loc[3, col2] = "{:.2f}".format(para[2])
 
@@ -216,7 +214,26 @@ def updatefig(fig,figdat, figindex, mini, maxi, title):
 
 #--------------------------------------
 
-def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2,slider,index,GCMindex,figindex,para,xx1,yy1):
+#def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2,slider,index,GCMindex,figindex,para,xx1,yy1):
+def createscatter(slider, index, GCMindex, figindex, writeflag = False):
+
+    loc = xydata[index][1]
+    y1 = int(105 - (loc // 109))
+    x1 = int(loc % 109)
+
+    yy = discharge[0][:, y1, x1].data
+    tss = pd.Series(yy, index=d)
+
+    admin1 = discharge[1][:, y1, x1]
+    admin2 = discharge[2][:, y1, x1]
+    adavg1 = discharge[3][:, y1, x1]
+    adavg2 = discharge[4][:, y1, x1]
+
+    daumin1 = discharge[5][:, y1, x1]
+    daumin2 = discharge[6][:, y1, x1]
+    dauavg1 = discharge[7][:, y1, x1]
+    dauavg2 = discharge[8][:, y1, x1]
+    para = discharge[9][:, y1, x1]
 
     dates[2] = dates[2].replace(year = int(slider)-30)
     dates[3] = dates[3].replace(year = int(slider)-1)
@@ -345,7 +362,49 @@ def createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg
         )
     )
 
-    text1,text2 = createtext(ts11, ts12,mnq1,mnq2, index, slider, GCMindex,para,xx1,yy1)
+    text1,text2 = createtext(ts11, ts12,mnq1,mnq2, index, slider, GCMindex,para,x1,y1)
+
+    if writeflag:
+
+        #Timeseries:
+        date1 = tss.index.strftime("%Y/%m/%d")
+        v1 = tss.values
+
+        # dailyavg.index dailymin dailyavg dailymin2 daliavg2
+        # dau1_mean[::-1]
+        #fig4.layout.title = name
+
+        text = 'WaterstressAT - Pinzgau Abflusswerkzeug\n'
+        text += 'Abflusszeitreihen aus dem hydrologischen Modells CWatM\n'
+        text +='Meteorologischen Daten aus OEKS15 (ZAMG)\n\n'
+        text +='Zeitreihe fuer Standort: Lat: '+ str(xydata[index][7]) + " Lon: " + str(xydata[index][8])+'\n'
+        text += str(xydata[index][9]) + " / " + str(xydata[index][10]) + "\n"
+        text += 'Höhe: ' + str(xydata[index][5]) + " Einzugsgebietsflächen: " + str(xydata[index][6]) + '\n\n'
+
+        #text += "Loc Nr:"+str(trigger[1]) + " " + str(index) + " "+str(GCMindex) + " " +str(figindex)+"\n\n"
+
+        text +='General Circulation Model (GCM): '+ GCMS[GCMindex]+'\n'
+        text += 'Abflusswerte in [m3/s]'
+        text +='Datum,Abflusswert,Tag im Jahr, Minimaler Wert fuer diesen Tag 1990-2020,Mittlerer Wert fuer diesen Tag 1990-2020,'
+        text += 'Minimaler Wert fuer diesen Tag 2020-2050,Mittlerer Wert fuer diesen Tag 2020-2050,'
+        text += 'Ueberschreitungstage,Dauerlinie Minimum Ueberschreitung 1990-2020,Dauerlinie Mittlere Ueberschreitung 1990-2020,'
+        text += 'Dauerlinie Minimum Ueberschreitung 2020-2050,Dauerlinie Mittlere Ueberschreitung 2020-2050\n'
+
+        for i in range(len(tss.values)):
+            if i<183:
+                text += tss.index[i].strftime("15.%m.%Y") +","+'{:8.2f}'.format(tss.values[i])
+                text += "," + '{:4d}'.format(i+1) + ","
+                text += '{:8.2f}'.format(admin1.values[i]) + "," +  '{:8.2f}'.format(adavg1.values[i]) + "," +  '{:8.2f}'.format(admin2.values[i]) + "," +  '{:8.2f}'.format(adavg2.values[i])
+                text += "," + '{:4d}'.format(i + 1) + ","
+                text +=  '{:8.2f}'.format(daumin1[::-1][i]) + "," +  '{:8.2f}'.format(dauavg1[::-1][i]) + "," +  '{:8.2f}'.format(daumin2[::-1][i]) + "," +  '{:8.2f}'.format(dauavg2[::-1][i])
+                text += '\n'
+            else:
+                text += tss.index[i].strftime("15.%m.%Y") + ","+ '{:8.2f}'.format(tss.values[i]) +"\n"
+
+
+        text1 = text
+        writeflag = False
+
 
     return fig,text1,text2
 
@@ -689,8 +748,8 @@ app.layout = dbc.Container([
                 dbc.Col(html.Div(id='my-output1')),
                 dbc.Col(html.Div(id='x1')),
                 dbc.Col(html.Div(id='my-output2')),
-                #dbc.Col(html.Div(id='x2'))
-                #dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
+                #dbc.Col(html.Div(id='x2')),
+                dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
 
             ],
         ),
@@ -761,28 +820,9 @@ def update_scatter1(input_value,d1value,d2value,slider):
     else:
         index = input_value['points'][0]['pointIndex']
 
-    loc = xydata[index][1]
-    y1 = int(105 - (loc // 109))
-    x1 = int(loc % 109)
 
-    #----------------------------
-    #yy = dis_month[0][:, y1, x1].data
-    yy = discharge[0][:, y1, x1].data
-    tss = pd.Series(yy, index=d)
-
-    admin1 = discharge[1][:, y1, x1]
-    admin2 = discharge[2][:, y1, x1]
-    adavg1 = discharge[3][:, y1, x1]
-    adavg2 = discharge[4][:, y1, x1]
-
-    daumin1 = discharge[5][:, y1, x1]
-    daumin2 = discharge[6][:, y1, x1]
-    dauavg1 = discharge[7][:, y1, x1]
-    dauavg2 = discharge[8][:, y1, x1]
-    para = discharge[9][:, y1, x1]
-
-
-    fig,text1,text2 = createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2, slider,index,GCMindex,figindex,para,x1,y1)
+    #fig,text1,text2 = createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2, slider,index,GCMindex,figindex,para,x1,y1)
+    fig,text1,text2  = createscatter(slider, index, GCMindex, figindex, False)
 
     return fig,text1,text2
 
@@ -826,42 +866,45 @@ def func(n_clicks):
         "./assets/waterstressat_pinzgau2.pdf"
     )
 # ------------------------------------
-"""
 @app.callback(
     Output("download-data", "data"),
     Input("btn_data", "n_clicks"),
     Input("salzburg-choropleth", "clickData"),
     Input('drop1', 'value'),
+    Input('drop2', 'value'),
+    Input('year-slider', 'value'),
     prevent_initial_call=True,
 )
-def func(n_clicks,input_value,d1value):
-
-
+def func(n_clicks,input_value,d1value,d2value,slider):
 
     if str(n_clicks) == str(downloadclick[0]):
         return
     else:
         downloadclick[0] = str(n_clicks)
 
+        figindex = figtype.index(d2value)
+
         if input_value is None:
             index = 2006
         else:
             index = input_value['points'][0]['pointIndex']
+
         latlon = "_lat" + str(xydata[index][7]) + "_lon" + str(xydata[index][8])
         GCMindex = GCMS.index(d1value)
-        name = "waterstressAT_data_" + GCMS[GCMindex] + latlon + "_" + str(downloadclick[0]) + str(n_clicks)+ ".csv"
+        #name = "waterstressAT_data_" + GCMS[GCMindex] + latlon + "_" + str(downloadclick[0]) + str(n_clicks)+ ".csv"
+        name = "waterstressAT_data_" + GCMS[GCMindex] + latlon + ".csv"
 
+        fig, text1, text2 = createscatter(slider, index, GCMindex, figindex, True)
 
-        dftest = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 1, 5, 6], "c": ["x", "x", "y", "y"]})
-
-        
+        #dftest = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 1, 5, 6], "c": ["x", "x", "y", "y"]})
         #discharge[0] = file["dis_month"][:, :, :]
-        
         #return dcc.send_data_frame(dftest.to_csv, name)
-        text = "blbalabla\n1,2,3,4\n5,6,7,8\n"
-        return dict(content= text, filename=name)
-"""
+
+
+        #text1 = "blbalabla\n1,2,3,4\n5,6,7,8\n"
+        return dict(content= text1, filename=name)
+        #return
 # ---------------------------------------------------
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
