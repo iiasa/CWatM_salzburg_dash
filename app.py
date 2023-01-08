@@ -855,8 +855,8 @@ drop4_dbc = dbc.Form(
                 {"label": "Eis", "value": "Eis"},
                 {"label": "Schnee", "value": "Schnee"},
                 {"label": "Regen", "value": "Regen"},
-                {"label": "Abfluss", "value": "Abfluss"},
-                {"label": "Evapotranspiration", "value": "Evapo"},
+                #{"label": "Abfluss", "value": "Abfluss"},
+                #{"label": "Evapotranspiration", "value": "Evapo"},
             ],
             value='Eis',
             searchable=False,
@@ -976,7 +976,8 @@ app.layout = dbc.Container([
 
     dcc.Store(id='ups'),
     dcc.Store(id='dis'),
-    dcc.Store("tabs",  data ="Wasserbilanz"),
+    dcc.Store("tabs1",  data ="Abfluss"),
+    dcc.Store("tabs2",  data ="Wasserbilanz"),
     dcc.Store("mappos1", data = 2006),
     html.Div([logo]),
 
@@ -1057,8 +1058,9 @@ app.layout = dbc.Container([
                 [
                     dbc.Col(html.Div(id='my-output21')),
                     dbc.Col(html.Div(id='x2')),
-                    dbc.Col(dcc.Markdown("Teileinzugsgebiet in Rot dargestellt. Werte in [mm]"),
-                            style={'fontSize': 12, 'textAlign': 'left'}),
+                    dbc.Col(dcc.Markdown("Teileinzugsgebiet in Rot dargestellt. Werte als Eingang, Ausgang, Speicher "
+                                         "als Mittelwerte für den Zeitraum in (mm)."),
+                            style={'fontSize': 15, 'textAlign': 'left'}),
 
                 ],
             ),
@@ -1077,57 +1079,6 @@ app.layout = dbc.Container([
 )
 
 #----------------------------
-
-# update scatterplot
-@app.callback(
-    Output('scatterplot1', 'figure'),
-    Output(component_id='my-output1', component_property='children'),
-    Output(component_id='my-output2', component_property='children'),
-    Output('dis', 'data'),
-    [Input("salzburg-choropleth", "clickData"),
-    Input('drop1', 'value'),
-    Input('drop2', 'value'),
-    Input('year-slider', 'value')])
-
-def update_scatter1(input_value,d1value,d2value,slider):
-    # dropbox GCM
-    GCMindex = GCMS.index(d1value)
-    figindex = figtype.index(d2value)
-
-    # laod new GCM
-    if GCMindex != GCMindex1[0]:
-        GCMindex1[0] = GCMindex
-        filename = "niedrig_" + GCMS[GCMindex] + ".nc"
-        file = xr.open_dataset(filename, decode_times=False)
-
-        #dis_month = [file["dis_month"][:, :, :]]
-        discharge[0] = file["dis_month"][:, :, :]
-        discharge[1] = file["annual_min2020"][:, :, :]
-        discharge[2] = file["annual_min2050"][:, :, :]
-        discharge[3] = file["annual_mean2020"][:, :, :]
-        discharge[4] = file["annual_mean2050"][:, :, :]
-        discharge[5] = file["duration_min2020"][:, :, :]
-        discharge[6] = file["duration_min2050"][:, :, :]
-        discharge[7] = file["duration_mean2020"][:, :, :]
-        discharge[8] = file["duration_mean2050"][:, :, :]
-        discharge[9] = file["para"][:, :, :]
-        file.close()
-
-
-    if input_value is None:
-        index = 2006
-    else:
-        index = input_value['points'][0]['pointIndex']
-
-    dis1 = q.copy()
-    dis1[index] = 250
-
-    #fig,text1,text2 = createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2, slider,index,GCMindex,figindex,para,x1,y1)
-    fig,text1,text2  = createscatter(slider, index, GCMindex, figindex, False)
-
-    return fig,text1,text2,dis1
-
-# -----------------------------------------------------------
 
 # change waterbalance
 @app.callback(
@@ -1158,28 +1109,92 @@ def tabs_change(selected_tab, input_value1, input_value2):
     return index3
 
 
+# update scatterplot
+@app.callback(
+    Output('scatterplot1', 'figure'),
+    Output(component_id='my-output1', component_property='children'),
+    Output(component_id='my-output2', component_property='children'),
+    Output('dis', 'data'),
+    Output('tabs1', 'data'),
+    Input("salzburg-choropleth", "clickData"),
+    Input('drop1', 'value'),
+    Input('drop2', 'value'),
+    Input('year-slider', 'value'),
+    Input("mappos1", "data"),
+    Input("WaterTabs", "value"),
+    State('tabs1', 'data'),
+    )
+
+def update_scatter1(input_value,d1value,d2value,slider,map1,tabvalue,tabold):
+
+    if tabvalue == tabold:
+        if input_value is None:
+            index = 2006
+        else:
+            index = input_value['points'][0]['pointIndex']
+    else:
+        index = map1
+
+    GCMindex = GCMS.index(d1value)
+    figindex = figtype.index(d2value)
+
+    # laod new GCM
+    if GCMindex != GCMindex1[0]:
+        GCMindex1[0] = GCMindex
+        filename = "niedrig_" + GCMS[GCMindex] + ".nc"
+        file = xr.open_dataset(filename, decode_times=False)
+
+        #dis_month = [file["dis_month"][:, :, :]]
+        discharge[0] = file["dis_month"][:, :, :]
+        discharge[1] = file["annual_min2020"][:, :, :]
+        discharge[2] = file["annual_min2050"][:, :, :]
+        discharge[3] = file["annual_mean2020"][:, :, :]
+        discharge[4] = file["annual_mean2050"][:, :, :]
+        discharge[5] = file["duration_min2020"][:, :, :]
+        discharge[6] = file["duration_min2050"][:, :, :]
+        discharge[7] = file["duration_mean2020"][:, :, :]
+        discharge[8] = file["duration_mean2050"][:, :, :]
+        discharge[9] = file["para"][:, :, :]
+        file.close()
+
+    dis1 = q.copy()
+    dis1[index] = 250
+
+    #fig,text1,text2 = createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2, slider,index,GCMindex,figindex,para,x1,y1)
+    fig,text1,text2  = createscatter(slider, index, GCMindex, figindex, False)
+
+    return fig,text1,text2,dis1,tabvalue
+
+# -----------------------------------------------------------
+
+
+
 # update sunburst
 @app.callback(
     Output(component_id='my-output21', component_property='children'),
     Output('ups', 'data'),
     Output('sunburst', 'figure'),
-    Output('tabs', 'data'),
+    Output('tabs2', 'data'),
     Output(component_id='sunburst_text', component_property='children'),
     Input("salzburg-choropleth2", "clickData"),
     Input("year-slider2", "value"),
     Input("mappos1", "data"),
     Input("WaterTabs", "value"),
-    State('tabs', 'data'),
+    State('tabs2', 'data'),
 
     )
 def update_sunburst(input_value,slider,map1,tabvalue,tabold):
 
-    ups1 = ups.copy()
-    if input_value is None:
-        index = 2006
-    else:
-        index = input_value['points'][0]['pointIndex']
 
+    if tabvalue == tabold:
+        if input_value is None:
+            index = 2006
+        else:
+            index = input_value['points'][0]['pointIndex']
+    else:
+        index = map1
+
+    ups1 = ups.copy()
     text2 = "Lat: " + str(xydata[index][7]) + " Lon: " + str(xydata[index][8])
     if slider == 2020:
         add = 0
@@ -1447,4 +1462,4 @@ def func(n_clicks,input_value,d1value,d2value,slider):
 # ---------------------------------------------------
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
+    app.run_server(debug=True)
