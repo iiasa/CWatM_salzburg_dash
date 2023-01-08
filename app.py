@@ -8,11 +8,12 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
+import pickle
 import numpy as np
 import json
 
 import pandas as pd
-import netCDF4
+#import netCDF4
 import xarray as xr
 from collections import OrderedDict
 
@@ -49,6 +50,55 @@ table1 = pd.DataFrame(table1)
 
 downloadclick = [None]
 
+# ----------------------------------------------------------
+def compress(input,mask):
+    # compressing maps by filtering out non ldd cells 2D -> 1D
+    out =  input.ravel()
+    return np.ma.compressed(np.ma.masked_array(out, mask))
+
+
+# ----- postorder tree travesal -----
+def postorder2(dirUp,node,dirDown):
+    """
+    Routine to run a postorder tree traversal
+
+    :param dirUp:
+    :param catchment:
+    :param node:
+    :param dirDown:
+    :return: dirDown
+    """
+
+    if dirUp[node] != []:
+        #postorder.counter += 1
+        postorder2(dirUp,dirUp[node][0],dirDown)
+        dirDown.append(dirUp[node][0])
+        if len(dirUp[node])>1:
+            postorder2(dirUp,dirUp[node][1],dirDown)
+            dirDown.append(dirUp[node][1])
+            if len(dirUp[node])>2:
+               postorder2(dirUp,dirUp[node][2],dirDown)
+               dirDown.append(dirUp[node][2])
+               if len(dirUp[node])>3:
+                postorder2(dirUp,dirUp[node][3],dirDown)
+                dirDown.append(dirUp[node][3])
+                if len(dirUp[node])>4:
+                 postorder2(dirUp,dirUp[node][4],dirDown)
+                 dirDown.append(dirUp[node][4])
+                 if len(dirUp[node])>5:
+                  postorder2(dirUp,dirUp[node][5],dirDown)
+                  dirDown.append(dirUp[node][5])
+                  if len(dirUp[node])>6:
+                   postorder2(dirUp,dirUp[node][6],dirDown)
+                   dirDown.append(dirUp[node][6])
+                   if len(dirUp[node])>7:
+                    postorder2(dirUp,dirUp[node][7],dirDown)
+                    dirDown.append(dirUp[node][7])
+
+# ------------------------------------
+
+
+
 # Jahresgang
 def minmax(v1,v2,v3,v4):
     min1 = min(min(v1),min(v2))
@@ -64,22 +114,28 @@ def geo_id(dd, dd_array):
    geo_idx = (np.abs(dd_array - dd)).argmin()
    return geo_idx
 
-def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
+def createtext1(index):
 
     text1 = dbc.Container(
         [
             dcc.Markdown(". "),
-            dcc.Markdown("Standort:    Lat: " + str(xydata[trigger1][7]) + " Lon: " + str(xydata[trigger1][8])),
-            dcc.Markdown("Einzugsgebietsfläche: " + str(xydata[trigger1][6]) + " km²"),
-            dcc.Markdown("Höhe:    " + str(xydata[trigger1][5])+" m"),
-            dcc.Markdown(str(xydata[trigger1][10]) + " / " + str(xydata[trigger1][11])),
+            dcc.Markdown("Standort:    Lat: " + str(xydata[index][7]) + " Lon: " + str(xydata[index][8])),
+            dcc.Markdown("Einzugsgebietsfläche: " + str(xydata[index][6]) + " km²"),
+            dcc.Markdown("Höhe:    " + str(xydata[index][5])+" m"),
+            dcc.Markdown(str(xydata[index][10]) + " / " + str(xydata[index][11])),
             #dcc.Markdown(str(x1) + " " + str(y1)),
         ],
         style={'fontSize': 15, 'textAlign': 'left'}
     )
 
-    ups = 1000 / xydata[trigger1][6]
-    col1 = "GCM: " + GCMS[trigger3]
+    return text1
+
+def createtext2(ts11,ts12,mnq1,mnq2,index,slider,GMCindex,para,x1,y1):
+
+
+
+    ups = 1000 / xydata[index][6]
+    col1 = "GCM: " + GCMS[GMCindex]
     col2 = '1990-2020'
     col3 = '2020-2050'
     table1.columns = [col1, col2, col3]
@@ -88,7 +144,7 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
     table1.loc[2, col2] = "{:.2f}".format(para[4])
     table1.loc[3, col2] = "{:.2f}".format(para[2])
 
-    if trigger2 < 2050:
+    if slider < 2050:
         table1.loc[0, col3] = ""
         table1.loc[1, col3] = ""
         table1.loc[2, col3] = ""
@@ -157,7 +213,7 @@ def createtext(ts11,ts12,mnq1,mnq2,trigger1,trigger2,trigger3,para,x1,y1):
     #dcc.Markdown("  Ø    Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[6], para[7])),
     #dcc.Markdown("  Max. Tage Dauerlinie 5%: {:5.0f} Tage zu: {:5.0f} Tage".format(para[8], para[9])),
 
-    return text1,table
+    return table
 #------------------------------------------------------
 
 def updatefig(fig,figdat, figindex, mini, maxi, title):
@@ -278,15 +334,14 @@ def createscatter(slider, index, GCMindex, figindex, writeflag = False):
         else:
             y3 = adavg2
             y4 = admin2
-
-        data3a = go.Scatter(y=y1, x=xx, mode='lines', name=GCMS[trigger[3]] + ' AVG 1990-2020',
+        data3a = go.Scatter(y=y1, x=xx, mode='lines', name=GCMS[GCMindex] + ' AVG 1990-2020',
                             line=dict(color='blue', width=2))
-        data3b = go.Scatter(y=y2, x=xx, mode='lines', name=GCMS[trigger[3]] + ' MIN 1990-2020',
+        data3b = go.Scatter(y=y2, x=xx, mode='lines', name=GCMS[GCMindex] + ' MIN 1990-2020',
                             line=dict(color='blue', width=1),
                             visible=True, fill='tonexty', fillcolor="rgba(31,120,180,0.2)")
-        data3c = go.Scatter(y=y3, x=xx, mode='lines', name=GCMS[trigger[3]] + ' AVG' + peri, visible=True,
+        data3c = go.Scatter(y=y3, x=xx, mode='lines', name=GCMS[GCMindex] + ' AVG' + peri, visible=True,
                             line=dict(color='red', width=2))
-        data3d = go.Scatter(y=y4, x=xx, mode='lines', name=GCMS[trigger[3]] + ' MIN' + peri,
+        data3d = go.Scatter(y=y4, x=xx, mode='lines', name=GCMS[GCMindex] + ' MIN' + peri,
                             line=dict(color='red', width=1),
                             visible=True, fill='tonexty', fillcolor="rgba(255,31,0,0.2)")
 
@@ -361,8 +416,8 @@ def createscatter(slider, index, GCMindex, figindex, writeflag = False):
             x=0.0
         )
     )
-
-    text1,text2 = createtext(ts11, ts12,mnq1,mnq2, index, slider, GCMindex,para,x1,y1)
+    text1 = createtext1(index)
+    text2 = createtext2(ts11, ts12,mnq1,mnq2, index, slider, GCMindex,para,x1,y1)
 
     if writeflag:
 
@@ -380,8 +435,6 @@ def createscatter(slider, index, GCMindex, figindex, writeflag = False):
         text +='Zeitreihe fuer Standort: Lat: '+ str(xydata[index][7]) + " Lon: " + str(xydata[index][8])+'\n'
         text += str(xydata[index][9]) + " / " + str(xydata[index][10]) + "\n"
         text += 'Höhe: ' + str(xydata[index][5]) + " Einzugsgebietsflächen: " + str(xydata[index][6]) + '\n\n'
-
-        #text += "Loc Nr:"+str(trigger[1]) + " " + str(index) + " "+str(GCMindex) + " " +str(figindex)+"\n\n"
 
         text +='General Circulation Model (GCM): '+ GCMS[GCMindex]+'\n'
         text += 'Abflusswerte in [m3/s]'
@@ -412,6 +465,7 @@ def createscatter(slider, index, GCMindex, figindex, writeflag = False):
 # -------------------------------------------------
 xyfile = "xydis_1km_geo.json"
 xytestfile = "xydis2.txt"
+upstreamfile = "upstream_connect.pkl"
 
 GCMS = ["MOHC85","IPSL85","ICHEC85","ICHEC45"]
 GCMindex1 = [0]
@@ -423,18 +477,99 @@ periode = [" 1990-2020"," 2020-2050"]
 with open(xyfile) as f:
     xyshape = json.load(f)
 # xydata = np.loadtxt(xytestfile, delimiter = ",",skiprows=1)
-xydata = np.array(pd.read_csv(xytestfile, sep=',',encoding='latin1'))
+xydata = np.zeros((5819, 36)).astype(object)
+
+xydata[:,0:12] = np.array(pd.read_csv(xytestfile, sep=',',encoding='latin1'))
 xydata[:, 0:8] = xydata[:, 0:8].astype(float)
+xydata[:, 12:36] = xydata[:, 12:36].astype(float)
+
 xyindex = xydata[:, 0].astype(int)
 q = xydata[:, 4]
 ups = xydata[:, 6]
 hovertext = '<b>mittlerer Durchfluss Q</b><br>ØQ: %{customdata[4]:.2f} m<sup>3</sup>/s<br>Einzg. Fläche: %{customdata[6]:.0f} km<sup>2</sup><br>Lat: %{customdata[7]:.2f} Lon: %{customdata[8]:.2f} Höhe: %{customdata[5]:.0f}'
 hovertext += '<extra>PG: %{customdata[10]}<br>PB: %{customdata[11]}</extra>'
 
+
+# read upstream link table for postorder tree travesal
+upstream = open(upstreamfile, 'rb')
+uplink = pickle.load(upstream)
+
+
+#---------------------------------
+#suninput = []
+suninput = np.zeros((5819, 24))
+
+
+pcttype = ["Eis","Schnee","Regen","Abfluss","Evapo"]
+#           0            1        2         3      4         5
+sunvar = ["icemelt","snowmelt", "rain","runoff","totalET","discharge",
+          "transpiration","evaporation", "waterevapo", "snowiceevap"]
+#             6              7             8                  9
+netfile = "waterbalance_MOHC85.nc"
+ds = xr.open_dataset(netfile)
+
+j = 0
+for var in sunvar:
+    y = ds[var +"1"].data
+    y = np.flipud(y)
+    if var == "icemelt":
+        mask = y.copy()
+        mask[mask > -9999999999999] = 0
+        mask[np.isnan(mask)] = 1
+
+    suninput[:,j] = compress(y, mask)
+    y = ds[var +"2"].data
+    y = np.flipud(y)
+    suninput[:, j+12] = compress(y, mask)
+    j += 1
+
+# correct
+suninput[:,4] =  suninput[:,6] + suninput[:,7] + suninput[:,8] +suninput[:,9]
+suninput[:,10] = suninput[:,0] + suninput[:,1] + suninput[:,2]
+suninput[:,11] = suninput[:,3] + suninput[:,4]
+
+suninput[:,4+12] =  suninput[:,6+12] + suninput[:,7+12] + suninput[:,8+12] +suninput[:,9+12]
+suninput[:,10+12] = suninput[:,0+12] + suninput[:,1+12] + suninput[:,2+12]
+suninput[:,11+12] = suninput[:,3+12] + suninput[:,4+12]
+
+
+
+xydata[:,12:36] = suninput
+
+suninput = []
+ii =1
+
+# sunburst label, parents colors
+#            0               1               2                3         4          5          6
+labels =["Wasserbilanz","Eingang",      "Ausgang",     "Speicher",    "Eis",   "Schnee",  "Regen",
+         "Abfluss", "Evapotranspiration","Transpiration","Evaporation","offenes Wasser","Schnee & Eis"]
+#               7         8                 9              10             11              12
+parents=["",             "Wasserbilanz","Wasserbilanz",     "Wasserbilanz",      "Eingang",             "Eingang","Eingang",
+         "Ausgang", "Ausgang",          "Evapotranspiration","Evapotranspiration","Evapotranspiration","Evapotranspiration","Evapotranspiration"]
+
+#           0         1        2        3        4           5        6
+colors = ['white','#b0c4de','#d2691e',"green",'lightblue','cornsilk','#64C0DA',
+          '#C55922','#539C66','#33AC86', '#D2691E','#40CEE4','lightblue']
+#            7         8           9        10        11        12
+#           0           1     2           3         4         5          6         7        8          9         10       11       12
+"""
+colors= ['white','#b0c4de','#d2691e','cornsilk','#00CC96','#33AC86','#539C66','#40CEE4','#64C0DA','#18C4D6','#C55922','#D2691E','#DF7919',
+         '#33AC86','#37AC82','#3AAC7E','#3DAC7B','#41AC78','#44AC75','#47AC72','#4AAC6F',
+         '#539C66','#569C63','#599C5F','#5C9C5C','#5F9C59','#639C56','#669C53','#699C4F',
+         '#D2691E','#C96925','#C3692A','#BC692F','#B86933','#B16939','#AF693D','#A96942','#A26945']
+"""
+
+# calculate catchment from this point
+dirDown = []
+postorder2(uplink, 2006, dirDown)
+
+ups1 = ups.copy()
+ups1[dirDown] = ups1[dirDown] + 6000
+
+# dirdown all elements to sum up in dirDown
+#upsarea = len(dirDown)
+#
 #--------------------------------------------------------
-color1=[[0.0, "rgba(255,255,255,0.1)"],
-        [0.005,"rgba(31,120,180,0.8)"],
-        [1.0, "rgba(178,223,138,0.8)"]]
 
 
 start1date = datetime.datetime.strptime("01/01/1990", "%d/%m/%Y")
@@ -486,8 +621,6 @@ ts12 = ts1[dates[2]:dates[3]]
 
 
 no = 2006 # close to Mittersill
-trigger = [0,no,2010,0]
-
 data2a = go.Scatter(y=ts11.values,x=ts11.index,mode='lines', name='MOHC 1990-2010',  visible= True, line = dict(color='blue', width=2))
 data2b = go.Scatter(y=ts12.values,x=ts11.index,mode='lines', name='MOHC 1990-2010',  visible= True, line = dict(color='red', width=1))
 data2c = go.Scatter(y=ts11.values,x=ts11.index,mode='lines', name='--', visible= False,line = dict(width=0))
@@ -495,7 +628,6 @@ data2d = go.Scatter(y=ts11.values,x=ts11.index,mode='lines', name='--', visible=
 
 layout2 = dict(title='Zeitreihe', xaxis_title = 'Tage', yaxis_title = 'Abfluss [m<sup>3</sup>/s]')
 
-#textinfo = createtext(ts11, ts12,no,0)
 textinfo = "bla"
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------------------------------
@@ -585,21 +717,27 @@ drop1_dbc = dbc.Form([
                 ),
 ])
 
-"""
-app.layout = html.Div(
-    className="container",
-    children=[
-        dcc.Graph(
-            id="graph-4",
-            figure=fig,
-            clear_on_unhover=True),
-        dcc.Tooltip(
-            id="graph-tooltip-4",
-            loading_text="LOADING",
-            direction="bottom"),
-    ],
-)
-"""
+
+drop1b_dbc = dbc.Form([
+                html.P(
+                    id="drop1b-text",
+                    children="",
+                ),
+                dcc.Dropdown(
+                    id = "drop1b",
+                    options = [
+                        {"label": "GCM: MOHC85", "value": "MOHC85"},
+                        {"label": "GCM: IPSL85", "value": "IPSL85"},
+                        {"label": "GCM: ICHEC85", "value": "ICHEC85"},
+                        #{"label": "GCM: ICHEC45", "value": "ICHEC45"},
+                    ],
+                    value='MOHC85',
+                    searchable=False,
+                    clearable=False,
+                    disabled=True
+                ),
+])
+
 
 drop2_dbc = dbc.Form(
     className="drop_box1",
@@ -702,60 +840,230 @@ scatter_dbc = dbc.Form([
         ),
 ])
 
+# layout wasserbilanz
 
-# LAYOUT
+drop4_dbc = dbc.Form(
+    className="drop_box4",
+    children=[
+        html.P(
+            id="drop4-text",
+            children="",
+        ),
+        dcc.Dropdown(
+            id="drop4",
+            options=[
+                {"label": "Eis", "value": "Eis"},
+                {"label": "Schnee", "value": "Schnee"},
+                {"label": "Regen", "value": "Regen"},
+                {"label": "Abfluss", "value": "Abfluss"},
+                {"label": "Evapotranspiration", "value": "Evapo"},
+            ],
+            value='Eis',
+            searchable=False,
+            clearable=False
+        ),
+        dcc.Tooltip(
+            id="drop4-tooltip",
+            loading_text="blabla",
+            direction="bottom"
+        ),
+    ],
+)
+
+slider2_dbc = dbc.Form([
+                html.P(
+                    id="slider-text2",
+                    children="",
+                    style={'clear': 'both'}
+                ),
+                dcc.Slider(
+                    id="year-slider2",
+                    min=2020,
+                    max=2050,
+                    step = 30,
+                    value=2020,
+
+                    marks={
+                        str(2020+year): {
+                            "label": str(2020+year),
+                            "style": {"color": "#082255"},
+                        }
+                        for year in  range(0, 31, 30)
+                    },
+                    tooltip={"placement": "bottom", "always_visible": True}
+                ),
+])
+
+map2_dbc = dbc.Form([
+        dcc.Graph(
+            id="salzburg-choropleth2",
+            config={'displayModeBar': False},
+            figure=dict(
+                layout=dict(
+                    mapbox=dict(),
+                    plot_bgcolor=colorapp["background"],
+                    paper_bgcolor=colorapp["background"],
+                    autosize=False,
+                    # showlegend=False,
+                    #uirevision
+                ),
+            ),
+        ),
+])
+
+"""
+scatter2_dbc = dbc.Form([
+        dcc.Markdown(""),
+        html.Div(
+            id="scatter21",
+            children=[
+                dcc.Graph(id='scatterplot2',
+                          config={'displayModeBar': False},
+                          style={'height': 400, 'width': 580}
+                          #style={'height': 350}
+                          )],
+        ),
+])
+"""
+
+sunburst_dbc = dbc.Form([
+        dcc.Markdown("Wasserbilanz in Teileinzugsgebiet"),
+        html.Div(id='sunburst_text'),
+        dcc.Graph(id='sunburst',
+                config={'displayModeBar': False},
+                style={'height': 400, 'width': 580}
+                )
+])
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------- Tabs Layout ------------------------
+
+tabs_styles = {
+    'height': '1px'
+}
+tab_style = {
+    'borderBottom': '1px solid #d6d6d6',
+    'padding': '10px',
+
+}
+
+tab_selected_style = {
+    'borderTop': '1px solid #416994',
+    'borderBottom': '1px solid #d6d6d6',
+    'backgroundColor': '#416994',
+    'color': 'white',
+    'padding': '10px',
+    'fontWeight': 'bold'
+}
+
+
+
+# ----------- Layout ..............................................
+
+
 
 app.layout = dbc.Container([
-        #dcc.Store(id='sunburstlevel'),
 
-        html.Div([logo]),
+    dcc.Store(id='ups'),
+    dcc.Store(id='dis'),
+    dcc.Store("tabs",  data ="Wasserbilanz"),
+    dcc.Store("mappos1", data = 2006),
+    html.Div([logo]),
 
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dbc.Row(html.H5("Salzach und Saalach Einzugsgebiet")),
-                        dbc.Row(html.Div([
-                            html.Button("Download Beschreibung", id="btn_pdf"), dcc.Download(id="download-pdf"),
-                            dcc.Tooltip(id="beschreibung-tooltip", loading_text ="blaaaTooltip text", background_color = "red", show= True, direction= "right"),
-                        ])),
-                    ],width=7),
+    dcc.Tabs([
+        dcc.Tab(label='Abfluss', value='Abfluss', style=tab_style, selected_style=tab_selected_style, children=[
+
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dbc.Row(html.H5("Salzach und Saalach Einzugsgebiet")),
+                            dbc.Row(html.Div([
+                                html.Button("Download Beschreibung", id="btn_pdf"), dcc.Download(id="download-pdf"),
+                                dcc.Tooltip(id="beschreibung-tooltip", loading_text ="blaaaTooltip text", background_color = "red", show= True, direction= "right"),
+                            ])),
+                        ],width=7),
+
+                    dbc.Col(
+                        [
+                            dbc.Row(drop1_dbc),
+                            dbc.Row(drop2_dbc),
+                            dbc.Row(slider_dbc)
+                        ],width=3),
+                    dbc.Col(html.H5(" "),width = 2),
+                ],
+            ),
+
+            dbc.Row(
+                [
+                    dbc.Col(map_dbc),
+                    dbc.Col(scatter_dbc),
+                ],
+            ),
+
+            dbc.Row(
+                [
+                    dbc.Col(html.Div(id='my-output1')),
+                    dbc.Col(html.Div(id='x1')),
+                    dbc.Col(html.Div(id='my-output2')),
+                    #dbc.Col(html.Div(id='x2')),
+                    dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
+
+                ],
+            ),
 
 
+            html.H1(""),
+            # end tab1
 
+        ]),  # end tab 1
 
+        dcc.Tab(label='Wasserbilanz', value='Wasserbilanz', style=tab_style, selected_style=tab_selected_style, children=[
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dbc.Row(html.H5("Salzach und Saalach Einzugsgebiet")),
+                        ], width=7),
 
-                    #html.H5("Salzach und Saalach Einzugsgebiet"),width = 7),
-                dbc.Col(
-                    [
-                        dbc.Row(drop1_dbc),
-                        dbc.Row(drop2_dbc),
-                        dbc.Row(slider_dbc)
-                    ],width=3),
-                dbc.Col(html.H5(" "),width = 2),
-            ],
-        ),
+                    dbc.Col(
+                        [
+                            dbc.Row(drop1b_dbc),
+                            dbc.Row(drop4_dbc),
+                            dbc.Row(slider2_dbc),
 
-        dbc.Row(
-            [
-                dbc.Col(map_dbc),
-                dbc.Col(scatter_dbc),
-            ],
-        ),
+                        ],width=3),
+                    dbc.Col(html.H5(" "),width = 2),
+                ],
+            ),
 
-        dbc.Row(
-            [
-                dbc.Col(html.Div(id='my-output1')),
-                dbc.Col(html.Div(id='x1')),
-                dbc.Col(html.Div(id='my-output2')),
-                #dbc.Col(html.Div(id='x2')),
-                dbc.Col(html.Div([html.Button("Download Daten für diese Zelle als csv", id="btn_data"), dcc.Download(id="download-data")])),
+            dbc.Row(
+                [
+                    dbc.Col(map2_dbc),
+                    dbc.Col(sunburst_dbc),
+                ],
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(html.Div(id='my-output21')),
+                    dbc.Col(html.Div(id='x2')),
+                    dbc.Col(dcc.Markdown("Teileinzugsgebiet in Rot dargestellt. Werte in [mm]"),
+                            style={'fontSize': 12, 'textAlign': 'left'}),
 
-            ],
-        ),
-
-
-        html.H1(""),
+                ],
+            ),
+        ]),  # end tab2
+    ], id='WaterTabs', value='Abfluss'),  # end tabs
 
     dbc.Row(
         [
@@ -763,34 +1071,25 @@ app.layout = dbc.Container([
             dbc.Col(html.Div(id='info2')),
         ],
     ),
-
-
-
-
-
 ],
     #fluid = True,
 
 )
 
-
-ii =1
-
 #----------------------------
-# ScatterPLOT
 
 # update scatterplot
 @app.callback(
     Output('scatterplot1', 'figure'),
     Output(component_id='my-output1', component_property='children'),
     Output(component_id='my-output2', component_property='children'),
+    Output('dis', 'data'),
     [Input("salzburg-choropleth", "clickData"),
-     Input('drop1', 'value'),
-     Input('drop2', 'value'),
-     Input('year-slider', 'value')])
+    Input('drop1', 'value'),
+    Input('drop2', 'value'),
+    Input('year-slider', 'value')])
 
 def update_scatter1(input_value,d1value,d2value,slider):
-
     # dropbox GCM
     GCMindex = GCMS.index(d1value)
     figindex = figtype.index(d2value)
@@ -820,28 +1119,184 @@ def update_scatter1(input_value,d1value,d2value,slider):
     else:
         index = input_value['points'][0]['pointIndex']
 
+    dis1 = q.copy()
+    dis1[index] = 250
 
     #fig,text1,text2 = createscatter(tss,admin1,admin2,adavg1,adavg2,daumin1,daumin2,dauavg1,dauavg2, slider,index,GCMindex,figindex,para,x1,y1)
     fig,text1,text2  = createscatter(slider, index, GCMindex, figindex, False)
 
-    return fig,text1,text2
+    return fig,text1,text2,dis1
+
+# -----------------------------------------------------------
+
+# change waterbalance
+@app.callback(
+    #Output(component_id='my-output21', component_property='children'),
+    Output('mappos1', 'data'),
+    #Output('tabs', 'data'),
+    [Input("WaterTabs", "value")],
+    [State("salzburg-choropleth", "clickData"),
+    State("salzburg-choropleth2", "clickData")]
+    )
+def tabs_change(selected_tab, input_value1, input_value2):
+
+    if input_value1 is None:
+        index1 = 2006
+    else:
+        index1 = input_value1['points'][0]['pointIndex']
+    if input_value2 is None:
+        index2 = 2006
+    else:
+        index2 = input_value2['points'][0]['pointIndex']
+
+    if selected_tab == "Wasserbilanz":
+        index3 = index1
+    else:
+        index3 = index2
+
+    text = selected_tab + str(index1) + str(index2) + " " + str(index3)
+    return index3
+
+
+# update sunburst
+@app.callback(
+    Output(component_id='my-output21', component_property='children'),
+    Output('ups', 'data'),
+    Output('sunburst', 'figure'),
+    Output('tabs', 'data'),
+    Output(component_id='sunburst_text', component_property='children'),
+    Input("salzburg-choropleth2", "clickData"),
+    Input("year-slider2", "value"),
+    Input("mappos1", "data"),
+    Input("WaterTabs", "value"),
+    State('tabs', 'data'),
+
+    )
+def update_sunburst(input_value,slider,map1,tabvalue,tabold):
+
+    ups1 = ups.copy()
+    if input_value is None:
+        index = 2006
+    else:
+        index = input_value['points'][0]['pointIndex']
+
+    text2 = "Lat: " + str(xydata[index][7]) + " Lon: " + str(xydata[index][8])
+    if slider == 2020:
+        add = 0
+        text2 += " Zeitraum:1990-2020"
+    else:
+        add = 12
+        text2 += " Zeitraum:2020-2050"
+
+    # calculate catchment from this point
+    dirDown = []
+    postorder2(uplink, index, dirDown)
+    dirDown.append(index)
+    upsarea = len(dirDown)
+
+    ups1[dirDown] = ups1[dirDown] + 6000
+    ups1[index] = ups1[index] + 6000
+
+    """
+    #           12            13        14       15     16         17
+    sunvar = ["icemelt", "snowmelt", "rain", "runoff", "totalET", "discharge",
+              "transpiration", "evaporation", "waterevapo", "snowiceevap"]
+    #             18              19             20                  21
+
+    # sunburst label, parents colors
+    #               0            1          2           3         4       5         6
+    labels = ["Wasserbilanz", "Eingang", "Ausgang", "Speicher", "Eis", "Schnee", "Regen",
+              "Abfluss", "Evapotranspiration", "Transpiration", "Evaporation", "offenes Wasser", "Schnee"]
+    #             7               8               9                10            11                12
+    parents = ["", "Wasserbilanz", "Wasserbilanz", "Wasserbilanz", "Eingang", "Eingang", "Eingang",
+               "Ausgang", "Ausgang", "Evapotranspiration", "Evapotranspiration", "Evapotranspiration",
+               "Evapotranspiration", "Evapotranspiration"]
+    """
+    value = np.zeros((13))
+    value[9] = np.mean(xydata[dirDown, 18+add])
+    value[10] = np.mean(xydata[dirDown, 19+add])
+    value[11] = np.mean(xydata[dirDown, 20+add])
+    value[12] = np.mean(xydata[dirDown, 21+add])
+
+    #value[7] = np.mean(xydata[dirDown, 15])   # Abfluss = runoff
+    value[7] = xydata[index, 17+add] / upsarea   # Abfluss = discharge
+    value[8] = value[9] + value[10] + value[11] + value[12] # evapotransration
+
+    value[4] = np.mean(xydata[dirDown, 12+add])  # eis schnee regen
+    value[5] = np.mean(xydata[dirDown, 13+add])
+    value[6] = np.mean(xydata[dirDown, 14+add])
+
+    value[1] = value[4] + value[5] + value[6]
+    value[2] = value[7] + value[8]
+    value[3] = abs(value[2]- value[1])
+    value[0] = value[1] + value[2] + value[3]
+
+    #-------------------------
+    text1 =str(upsarea)
+
+    part = 'value:.{}f'.format(0)
+
+    fig = go.Figure(go.Sunburst(
+        labels= labels,
+        parents = parents,
+        values = value,
+        marker_colors=colors,
+        branchvalues='total',
+        #level = sunburstlevel,
+        hoverinfo='all',
+        hovertemplate='<b>%{label}</b><br> %{' + part + '} mm <extra><b>%{parent}</b><br>Anteil: %{percentParent:.0%} </extra>',
+    ))
+    
+    fig.update_layout(
+        #transition_duration=500,
+        margin=dict(t=0, l=0, r=0, b=0),
+        plot_bgcolor=colorapp["background"],
+        paper_bgcolor=colorapp["background"],
+    )
+
+    #return text1, ups1,fig
+    #text1 = str(index) + " " + str(map1) + " " +str(tabvalue) + " " +str(tabold)
+    text1 = createtext1(index)
+
+
+
+
+    return text1, ups1, fig,tabvalue,text2
 
 
 # -------------------------------------------------
 # map Salzburg map
 @app.callback(
     Output("salzburg-choropleth", "figure"),
-    [Input("year-slider", "value")],
-    [State("salzburg-choropleth", "figure")],
+    Input('dis', 'data'),
 )
-def display_map(year, figure):
+def display_map(dis1):
 
     # https://plotly.com/python/builtin-colorscales/
     # fig = go.Figure(go.Choroplethmapbox(name="Global Basins", geojson=global_basins, locations=globalinfo.index, z=zzz,
     # portland balance
-    fig = go.Figure(go.Choroplethmapbox(name ="WasserstressAT",geojson=xyshape, locations=xyindex,z=q,customdata= xydata,
-                            colorscale=color1, zmin=0, zmax=max(q),marker_line_color="grey", marker_line_width=0.2,
+
+    color1 = [[0.0, "rgba(255,255,255,0.1)"],
+              [0.005, "rgba(31,120,180,0.8)"],
+              [0.99, "rgba(178,223,138,0.8)"],
+              [1.00, "rgba(255,0,0,0.5)"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Choroplethmapbox(name ="WasserstressAT",geojson=xyshape, locations=xyindex,z=dis1,customdata= xydata,
+                            colorscale=color1, zmin=0, zmax=max(dis1),marker_line_color="grey", marker_line_width=0.2,
                             hovertemplate=hovertext))
+    """
+    fig.add_trace(go.Scattermapbox(
+        lat=[xydata[index][7]],
+        lon=[xydata[index][8]],
+        mode='markers',
+        marker = dict(
+            size = 14,
+            color = 'rgb(255,0,0)',
+            opacity = 0.4,
+        ),
+    ))
+    """
 
     fig.update_layout(mapbox_accesstoken=mapbox_access_token,
                    mapbox_style= "mapbox://styles/bupe/cjw7g6cax0hem1cqy9vc9vln4",
@@ -855,7 +1310,92 @@ def display_map(year, figure):
                    )
     return fig
 
-#----------------------------------
+
+# map Salzburg map
+@app.callback(
+    Output("salzburg-choropleth2", "figure"),
+    [Input("year-slider2", "value"),
+    Input('drop4', 'value'),
+    Input('ups', 'data')]
+)
+def display_map2(year,d4value, ups1):
+
+    # https://plotly.com/python/builtin-colorscales/
+    # fig = go.Figure(go.Choroplethmapbox(name="Global Basins", geojson=global_basins, locations=globalinfo.index, z=zzz,
+    # portland balance
+
+    pctindex = pcttype.index(d4value)
+
+    hovertext2 = '<b>mittlerer Durchfluss Q</b><br>ØQ: %{customdata[4]:.2f} m<sup>3</sup>/s<br>Einzg. Fläche: %{customdata[6]:.0f} km<sup>2</sup><br>Lat: %{customdata[7]:.2f} Lon: %{customdata[8]:.2f} Höhe: %{customdata[5]:.0f}'
+
+    if year == 2020:
+        add = 0
+        hovertext2 += '<extra><b>Pro Zelle in [mm]</b><br>Eis: %{customdata[12]:.0f}<br>Schnee: %{customdata[13]:.0f}<br>Regen: %{customdata[14]:.0f}' \
+                  '<br>Abfluss: %{customdata[15]:.0f}<br>Evapotrans: %{customdata[16]:.0f}</extra>'
+    else:
+        add = 12
+        hovertext2 += '<extra><b>Pro Zelle in [mm]</b><br>Eis: %{customdata[24]:.0f}<br>Schnee: %{customdata[25]:.0f}<br>Regen: %{customdata[26]:.0f}' \
+                  '<br>Abfluss: %{customdata[27]:.0f}<br>Evapotrans: %{customdata[28]:.0f}</extra>'
+
+    #max basin area 5819
+    pzt = 6000 / np.max(ups1)
+    color2 = [[0.0, "rgba(255,255,255,0.1)"],
+              [0.005, "rgba(31,120,180,0.8)"],
+              [pzt-0.0001, "rgba(178,223,138,0.8)"],
+              [pzt , "rgba(255,100,100,0.5)"],
+              [1.00, "rgba(255,0,0,0.5)"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Choroplethmapbox(name ="WasserstressAT",geojson=xyshape, locations=xyindex,z=ups1,customdata= xydata,
+                            showscale =False,
+                            colorscale=color2, zmin=0, zmax=max(ups1),marker_line_color="grey", marker_line_width=0.2,
+                            hovertemplate=hovertext))
+
+    lat_size = xydata[:,7]
+    lon_size = xydata[:,8]
+
+    multpct = 50.
+    if pctindex < 3:
+        s1 = (xydata[:, 12+pctindex+add] / xydata[:, 22+add] * multpct).astype(float)
+    else:
+        s1 = (xydata[:, 12+pctindex+add] / xydata[:, 23+add] * multpct).astype(float)
+
+    fig.add_trace(go.Scattermapbox(
+        lat=lat_size, lon=lon_size,
+        #cluster= dict(enabled=True, maxzoom= 20.0,size = 10, step = 10,color ="aliceblue"),
+        #cluster=dict(enabled=True),
+        #mode='markers',
+        customdata=xydata,
+        hovertemplate=hovertext2,
+        legendwidth=0,
+        #showlegend = False,
+        marker = dict(size = s1, color = 'darkblue', opacity = 0.8,
+                      allowoverlap = False, showscale=False,
+                      sizemode = "diameter",
+                      sizemin = 1,sizeref = 4,
+
+                      ),
+    ))
+
+    #fig.update_traces(showlegend= False, selector = dict(type='choroplethmapbox'))
+    #fig.update_traces(cluster=dict(enabled=True))
+    #fig.update_traces(cluster=dict(enabled=True),
+    #                  selector=dict(type="scattermapbox"))
+
+    fig.update_layout(mapbox_accesstoken=mapbox_access_token,
+                   mapbox_style= "mapbox://styles/bupe/cjw7g6cax0hem1cqy9vc9vln4",
+                   mapbox_center={"lat": 47.5, "lon": 12.7},
+                   mapbox_pitch=0, mapbox_zoom=7.7,
+                   margin={"r": 0, "t": 0, "l": 0, "b": 0},
+                   height= 400,
+                   autosize=False,
+                   uirevision=True,
+                   dragmode=False,
+
+                   )
+    return fig
+
+#------------------------------------
 @app.callback(
     Output("download-pdf", "data"),
     Input("btn_pdf", "n_clicks"),
